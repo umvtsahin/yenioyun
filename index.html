@@ -3,307 +3,183 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PRO NEON ARENA | MULTIPLAYER</title>
+    <title>GLOW HOCKEY PRO</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-
-        :root {
-            --n-blue: #00f3ff;
-            --n-pink: #ff00ff;
-            --bg: #08080a;
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap');
+        :root { --blue: #00f3ff; --pink: #ff00ff; --bg: #050505; }
+        * { box-sizing: border-box; touch-action: none; user-select: none; }
+        body { margin: 0; background: var(--bg); color: white; font-family: 'Orbitron', sans-serif; height: 100vh; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        
+        #menu { 
+            position: absolute; z-index: 100; background: rgba(10,10,15,0.95); padding: 30px; 
+            border: 2px solid var(--blue); border-radius: 20px; text-align: center; width: 320px;
         }
-
-        * {
-            box-sizing: border-box;
-            touch-action: none;
-            user-select: none;
+        input { 
+            width: 100%; padding: 12px; margin: 15px 0; background: #111; border: 1px solid #333; 
+            color: var(--blue); font-size: 18px; text-align: center; border-radius: 8px; outline: none;
         }
-
-        body {
-            margin: 0;
-            padding: 0;
-            background: var(--bg);
-            color: white;
-            font-family: 'Orbitron', sans-serif;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            overflow: hidden;
+        .btns { display: flex; gap: 10px; }
+        button { 
+            flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;
+            text-transform: uppercase; transition: 0.2s;
         }
-
-        /* Giriş Arayüzü */
-        #ui-wrapper {
-            position: absolute;
-            z-index: 1000;
-            background: rgba(10, 10, 15, 0.95);
-            padding: 40px;
-            border-radius: 20px;
-            border: 2px solid var(--n-blue);
-            box-shadow: 0 0 30px rgba(0, 243, 255, 0.3);
-            text-align: center;
-            width: 90%;
-            max-width: 400px;
-            transition: opacity 0.5s ease;
+        .b-h { background: var(--blue); } .b-j { background: var(--pink); color: white; }
+        
+        #game-ui { 
+            position: absolute; top: 0; width: 100%; height: 100%; display: none; pointer-events: none;
+            border: 5px solid #111;
         }
-
-        h1 {
-            font-size: 24px;
-            margin-bottom: 30px;
-            letter-spacing: 5px;
-            background: linear-gradient(to right, var(--n-blue), var(--n-pink));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        input {
-            width: 100%;
-            padding: 15px;
-            background: #111;
-            border: 1px solid #333;
-            color: var(--n-blue);
-            font-size: 20px;
-            text-align: center;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            font-family: 'Orbitron', sans-serif;
-            outline: none;
-        }
-
-        input:focus { border-color: var(--n-pink); }
-
-        .btn-group { display: flex; gap: 10px; }
-
-        button {
-            flex: 1;
-            padding: 15px;
-            border: none;
-            border-radius: 10px;
-            font-weight: bold;
-            cursor: pointer;
-            text-transform: uppercase;
-            transition: 0.3s;
-            font-family: 'Orbitron', sans-serif;
-        }
-
-        .btn-host { background: var(--n-blue); color: #000; }
-        .btn-join { background: var(--n-pink); color: #fff; }
-
-        button:hover { transform: translateY(-3px); filter: brightness(1.2); }
-
-        #status-bar {
-            margin-top: 20px;
-            font-size: 12px;
-            color: #666;
-        }
-
-        /* Oyun Sahnesi */
-        #game-container {
-            position: relative;
-            display: none; /* Başta gizli */
-            width: 100vw;
-            height: 100vh;
-        }
-
-        canvas {
-            background: #000;
-            display: block;
-        }
-
-        #score-board {
-            position: absolute;
-            top: 20px;
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            gap: 100px;
-            font-size: 40px;
-            pointer-events: none;
-            opacity: 0.5;
-        }
+        .score { position: absolute; font-size: 60px; opacity: 0.3; width: 100%; text-align: center; }
+        .goal { position: absolute; height: 150px; width: 10px; background: rgba(255,255,255,0.1); }
     </style>
 </head>
 <body>
 
-    <div id="ui-wrapper">
-        <h1>NEON ARENA</h1>
-        <input type="text" id="room-input" placeholder="4 HANELİ ŞİFRE" maxlength="4">
-        <div class="btn-group">
-            <button class="btn-host" onclick="initPeer('host')">ODA KUR</button>
-            <button class="btn-join" onclick="initPeer('join')">KATIL</button>
+    <div id="menu">
+        <h2 style="color:var(--blue)">GLOW HOCKEY</h2>
+        <input type="text" id="code" placeholder="4 HANELİ ŞİFRE" maxlength="4">
+        <div class="btns">
+            <button class="b-h" onclick="start('host')">KUR</button>
+            <button class="b-j" onclick="start('join')">KATIL</button>
         </div>
-        <div id="status-bar">Arkadaşınla aynı şifreyi belirle.</div>
+        <p id="msg" style="font-size:10px; margin-top:15px; color:#555">Aynı şifreyi girip farklı butonlara basın.</p>
     </div>
 
-    <div id="game-container">
-        <div id="score-board">
-            <span id="s1" style="color: var(--n-blue)">0</span>
-            <span id="s2" style="color: var(--n-pink)">0</span>
-        </div>
-        <canvas id="arena"></canvas>
+    <div id="game-ui">
+        <div class="score" id="s1_ui" style="top: 10%; color:var(--blue)">0</div>
+        <div class="score" id="s2_ui" style="bottom: 10%; color:var(--pink)">0</div>
+        <canvas id="canvas"></canvas>
     </div>
 
     <script>
-        const canvas = document.getElementById('arena');
+        const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        const status = document.getElementById('status-bar');
-        
-        let peer, conn, myRole;
-        let gameActive = false;
+        let peer, conn, role;
+        let s1 = 0, s2 = 0;
 
-        // Oyun Nesneleri
-        const gameState = {
-            p1: { y: 0, score: 0 },
-            p2: { y: 0, score: 0 },
-            ball: { x: 0, y: 0, dx: 6, dy: 6 }
-        };
+        const world = { w: 0, h: 0 };
+        const puck = { x: 0, y: 0, vx: 0, vy: 0, r: 25 };
+        const p1 = { x: 0, y: 0, r: 40, color: '#00f3ff' };
+        const p2 = { x: 0, y: 0, r: 40, color: '#ff00ff' };
 
-        const paddle = { w: 15, h: 100 };
-
-        function initPeer(role) {
-            const code = document.getElementById('room-input').value;
-            if (code.length < 4) return alert("Lütfen 4 hane gir!");
+        function start(type) {
+            const val = document.getElementById('code').value;
+            if(val.length < 4) return;
+            role = type;
+            const id = type === 'host' ? `glow-${val}-h` : `glow-${val}-j`;
+            peer = new Peer(id);
             
-            myRole = role;
-            const peerId = role === 'host' ? `neon-${code}-master` : `neon-${code}-guest`;
-            
-            status.innerText = "Sunucuya bağlanıyor...";
-            peer = new Peer(peerId);
-
             peer.on('open', () => {
-                if (role === 'host') {
-                    status.innerText = "Oda hazır! Arkadaşının 'KATIL' demesini bekle...";
-                } else {
-                    status.innerText = "Host aranıyor...";
-                    conn = peer.connect(`neon-${code}-master`);
-                    setupConnection();
+                if(role === 'join') {
+                    conn = peer.connect(`glow-${val}-h`);
+                    initComm();
                 }
+                document.getElementById('msg').innerText = "Bağlantı bekleniyor...";
             });
 
             peer.on('connection', c => {
                 conn = c;
-                setupConnection();
-            });
-
-            peer.on('error', err => {
-                console.error(err);
-                status.innerText = "Hata: Şifre dolu veya internet sorunu!";
+                initComm();
             });
         }
 
-        function setupConnection() {
+        function initComm() {
             conn.on('open', () => {
-                document.getElementById('ui-wrapper').style.opacity = '0';
-                setTimeout(() => {
-                    document.getElementById('ui-wrapper').style.display = 'none';
-                    document.getElementById('game-container').style.display = 'block';
-                    resize();
-                    gameActive = true;
-                    loop();
-                }, 500);
+                document.getElementById('menu').style.display = 'none';
+                document.getElementById('game-ui').style.display = 'block';
+                setup();
+                loop();
             });
-
             conn.on('data', data => {
-                if (myRole === 'host') {
-                    gameState.p2.y = data.y;
+                if(role === 'host') {
+                    p2.x = data.x; p2.y = data.y;
                 } else {
-                    gameState.p1.y = data.p1y;
-                    gameState.ball = data.ball;
-                    gameState.p1.score = data.s1;
-                    gameState.p2.score = data.s2;
+                    p1.x = data.p1.x; p1.y = data.p1.y;
+                    puck.x = data.puck.x; puck.y = data.puck.y;
+                    s1 = data.s1; s2 = data.s2;
                 }
             });
         }
 
-        function resize() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            gameState.p1.y = canvas.height / 2;
-            gameState.p2.y = canvas.height / 2;
-            if(myRole === 'host') resetBall();
+        function setup() {
+            world.w = canvas.width = window.innerWidth;
+            world.h = canvas.height = window.innerHeight;
+            puck.x = world.w/2; puck.y = world.h/2;
+            p1.x = world.w/2; p1.y = 100;
+            p2.x = world.w/2; p2.y = world.h - 100;
         }
 
-        function resetBall() {
-            gameState.ball.x = canvas.width / 2;
-            gameState.ball.y = canvas.height / 2;
-            gameState.ball.dx *= -1;
-        }
-
-        // Kontroller
-        const handleMove = (e) => {
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            if (myRole === 'host') gameState.p1.y = clientY;
-            else gameState.p2.y = clientY;
+        window.onmousemove = window.ontouchmove = e => {
+            const pos = e.touches ? e.touches[0] : e;
+            if(role === 'host') { p1.x = pos.clientX; p1.y = pos.clientY; }
+            else { p2.x = pos.clientX; p2.y = pos.clientY; }
         };
-        window.addEventListener('mousemove', handleMove);
-        window.addEventListener('touchmove', handleMove);
+
+        function checkCircleCol(c1, c2) {
+            const dx = c1.x - c2.x;
+            const dy = c1.y - c2.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            if(dist < c1.r + c2.r) {
+                const angle = Math.atan2(dy, dx);
+                puck.vx = Math.cos(angle) * 12;
+                puck.vy = Math.sin(angle) * 12;
+            }
+        }
 
         function loop() {
-            if (!gameActive) return;
+            ctx.fillStyle = 'rgba(5,5,5,0.4)';
+            ctx.fillRect(0,0,world.w, world.h);
 
-            // Arka Plan
-            ctx.fillStyle = 'rgba(8, 8, 10, 0.15)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            if(role === 'host') {
+                // Fizik
+                puck.x += puck.vx; puck.y += puck.vy;
+                puck.vx *= 0.98; puck.vy *= 0.98; // Sürtünme
 
-            if (myRole === 'host') {
-                // Fizik Hesaplama (Sadece Host yapar)
-                gameState.ball.x += gameState.ball.dx;
-                gameState.ball.y += gameState.ball.dy;
+                // Duvarlar
+                if(puck.x < puck.r || puck.x > world.w - puck.r) puck.vx *= -1;
+                
+                // Kale Kontrol (Üst ve Alt)
+                if(puck.y < 0) { s2++; resetPuck(); }
+                if(puck.y > world.h) { s1++; resetPuck(); }
+                if(puck.y < puck.r || puck.y > world.h - puck.r) puck.vy *= -1;
 
-                // Kenar Çarpmaları
-                if (gameState.ball.y < 0 || gameState.ball.y > canvas.height) gameState.ball.dy *= -1;
+                checkCircleCol(puck, p1);
+                checkCircleCol(puck, p2);
 
-                // Raket Çarpmaları
-                if (gameState.ball.x < 40 && Math.abs(gameState.ball.y - gameState.p1.y) < paddle.h/2) {
-                    gameState.ball.dx = Math.abs(gameState.ball.dx) * 1.05;
-                }
-                if (gameState.ball.x > canvas.width - 40 && Math.abs(gameState.ball.y - gameState.p2.y) < paddle.h/2) {
-                    gameState.ball.dx = -Math.abs(gameState.ball.dx) * 1.05;
-                }
-
-                // Skor
-                if (gameState.ball.x < 0) { gameState.p2.score++; resetBall(); }
-                if (gameState.ball.x > canvas.width) { gameState.p1.score++; resetBall(); }
-
-                // Veri Gönder
-                conn.send({ p1y: gameState.p1.y, ball: gameState.ball, s1: gameState.p1.score, s2: gameState.p2.score });
+                conn.send({ p1, puck, s1, s2 });
             } else {
-                conn.send({ y: gameState.p2.y });
+                conn.send({ x: p2.x, y: p2.y });
             }
 
+            // Skor Güncelle
+            document.getElementById('s1_ui').innerText = s1;
+            document.getElementById('s2_ui').innerText = s2;
+
             // Çizim
-            drawGame();
+            drawCircle(p1.x, p1.y, p1.r, p1.color);
+            drawCircle(p2.x, p2.y, p2.r, p2.color);
+            drawCircle(puck.x, puck.y, puck.r, '#fff', true);
+
             requestAnimationFrame(loop);
         }
 
-        function drawGame() {
-            document.getElementById('s1').innerText = gameState.p1.score;
-            document.getElementById('s2').innerText = gameState.p2.score;
-
-            // P1 - Mavi
-            drawNeonRect(20, gameState.p1.y - paddle.h/2, paddle.w, paddle.h, '#00f3ff');
-            // P2 - Pembe
-            drawNeonRect(canvas.width - 35, gameState.p2.y - paddle.h/2, paddle.w, paddle.h, '#ff00ff');
-            // Top
-            ctx.beginPath();
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = "#fff";
-            ctx.fillStyle = "#fff";
-            ctx.arc(gameState.ball.x, gameState.ball.y, 10, 0, Math.PI*2);
-            ctx.fill();
-            ctx.shadowBlur = 0;
+        function resetPuck() {
+            puck.x = world.w/2; puck.y = world.h/2;
+            puck.vx = 0; puck.vy = 0;
         }
 
-        function drawNeonRect(x, y, w, h, color) {
+        function drawCircle(x, y, r, color, isPuck = false) {
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI*2);
             ctx.shadowBlur = 20;
             ctx.shadowColor = color;
-            ctx.fillStyle = color;
-            ctx.fillRect(x, y, w, h);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 5;
+            ctx.stroke();
+            if(isPuck) { ctx.fillStyle = "white"; ctx.fill(); }
             ctx.shadowBlur = 0;
         }
-
-        window.onresize = resize;
     </script>
 </body>
 </html>
