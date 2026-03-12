@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PRO NEON ARENA | MULTIPLAYER</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+
+        :root {
+            --n-blue: #00f3ff;
+            --n-pink: #ff00ff;
+            --bg: #08080a;
+        }
+
+        * {
+            box-sizing: border-box;
+            touch-action: none;
+            user-select: none;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: var(--bg);
+            color: white;
+            font-family: 'Orbitron', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Giriş Arayüzü */
+        #ui-wrapper {
+            position: absolute;
+            z-index: 1000;
+            background: rgba(10, 10, 15, 0.95);
+            padding: 40px;
+            border-radius: 20px;
+            border: 2px solid var(--n-blue);
+            box-shadow: 0 0 30px rgba(0, 243, 255, 0.3);
+            text-align: center;
+            width: 90%;
+            max-width: 400px;
+            transition: opacity 0.5s ease;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 30px;
+            letter-spacing: 5px;
+            background: linear-gradient(to right, var(--n-blue), var(--n-pink));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        input {
+            width: 100%;
+            padding: 15px;
+            background: #111;
+            border: 1px solid #333;
+            color: var(--n-blue);
+            font-size: 20px;
+            text-align: center;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-family: 'Orbitron', sans-serif;
+            outline: none;
+        }
+
+        input:focus { border-color: var(--n-pink); }
+
+        .btn-group { display: flex; gap: 10px; }
+
+        button {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: 0.3s;
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        .btn-host { background: var(--n-blue); color: #000; }
+        .btn-join { background: var(--n-pink); color: #fff; }
+
+        button:hover { transform: translateY(-3px); filter: brightness(1.2); }
+
+        #status-bar {
+            margin-top: 20px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        /* Oyun Sahnesi */
+        #game-container {
+            position: relative;
+            display: none; /* Başta gizli */
+            width: 100vw;
+            height: 100vh;
+        }
+
+        canvas {
+            background: #000;
+            display: block;
+        }
+
+        #score-board {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 100px;
+            font-size: 40px;
+            pointer-events: none;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui-wrapper">
+        <h1>NEON ARENA</h1>
+        <input type="text" id="room-input" placeholder="4 HANELİ ŞİFRE" maxlength="4">
+        <div class="btn-group">
+            <button class="btn-host" onclick="initPeer('host')">ODA KUR</button>
+            <button class="btn-join" onclick="initPeer('join')">KATIL</button>
+        </div>
+        <div id="status-bar">Arkadaşınla aynı şifreyi belirle.</div>
+    </div>
+
+    <div id="game-container">
+        <div id="score-board">
+            <span id="s1" style="color: var(--n-blue)">0</span>
+            <span id="s2" style="color: var(--n-pink)">0</span>
+        </div>
+        <canvas id="arena"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('arena');
+        const ctx = canvas.getContext('2d');
+        const status = document.getElementById('status-bar');
+        
+        let peer, conn, myRole;
+        let gameActive = false;
+
+        // Oyun Nesneleri
+        const gameState = {
+            p1: { y: 0, score: 0 },
+            p2: { y: 0, score: 0 },
+            ball: { x: 0, y: 0, dx: 6, dy: 6 }
+        };
+
+        const paddle = { w: 15, h: 100 };
+
+        function initPeer(role) {
+            const code = document.getElementById('room-input').value;
+            if (code.length < 4) return alert("Lütfen 4 hane gir!");
+            
+            myRole = role;
+            const peerId = role === 'host' ? `neon-${code}-master` : `neon-${code}-guest`;
+            
+            status.innerText = "Sunucuya bağlanıyor...";
+            peer = new Peer(peerId);
+
+            peer.on('open', () => {
+                if (role === 'host') {
+                    status.innerText = "Oda hazır! Arkadaşının 'KATIL' demesini bekle...";
+                } else {
+                    status.innerText = "Host aranıyor...";
+                    conn = peer.connect(`neon-${code}-master`);
+                    setupConnection();
+                }
+            });
+
+            peer.on('connection', c => {
+                conn = c;
+                setupConnection();
+            });
+
+            peer.on('error', err => {
+                console.error(err);
+                status.innerText = "Hata: Şifre dolu veya internet sorunu!";
+            });
+        }
+
+        function setupConnection() {
+            conn.on('open', () => {
+                document.getElementById('ui-wrapper').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('ui-wrapper').style.display = 'none';
+                    document.getElementById('game-container').style.display = 'block';
+                    resize();
+                    gameActive = true;
+                    loop();
+                }, 500);
+            });
+
+            conn.on('data', data => {
+                if (myRole === 'host') {
+                    gameState.p2.y = data.y;
+                } else {
+                    gameState.p1.y = data.p1y;
+                    gameState.ball = data.ball;
+                    gameState.p1.score = data.s1;
+                    gameState.p2.score = data.s2;
+                }
+            });
+        }
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            gameState.p1.y = canvas.height / 2;
+            gameState.p2.y = canvas.height / 2;
+            if(myRole === 'host') resetBall();
+        }
+
+        function resetBall() {
+            gameState.ball.x = canvas.width / 2;
+            gameState.ball.y = canvas.height / 2;
+            gameState.ball.dx *= -1;
+        }
+
+        // Kontroller
+        const handleMove = (e) => {
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            if (myRole === 'host') gameState.p1.y = clientY;
+            else gameState.p2.y = clientY;
+        };
+        window.addEventListener('mousemove', handleMove);
+        window.addEventListener('touchmove', handleMove);
+
+        function loop() {
+            if (!gameActive) return;
+
+            // Arka Plan
+            ctx.fillStyle = 'rgba(8, 8, 10, 0.15)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (myRole === 'host') {
+                // Fizik Hesaplama (Sadece Host yapar)
+                gameState.ball.x += gameState.ball.dx;
+                gameState.ball.y += gameState.ball.dy;
+
+                // Kenar Çarpmaları
+                if (gameState.ball.y < 0 || gameState.ball.y > canvas.height) gameState.ball.dy *= -1;
+
+                // Raket Çarpmaları
+                if (gameState.ball.x < 40 && Math.abs(gameState.ball.y - gameState.p1.y) < paddle.h/2) {
+                    gameState.ball.dx = Math.abs(gameState.ball.dx) * 1.05;
+                }
+                if (gameState.ball.x > canvas.width - 40 && Math.abs(gameState.ball.y - gameState.p2.y) < paddle.h/2) {
+                    gameState.ball.dx = -Math.abs(gameState.ball.dx) * 1.05;
+                }
+
+                // Skor
+                if (gameState.ball.x < 0) { gameState.p2.score++; resetBall(); }
+                if (gameState.ball.x > canvas.width) { gameState.p1.score++; resetBall(); }
+
+                // Veri Gönder
+                conn.send({ p1y: gameState.p1.y, ball: gameState.ball, s1: gameState.p1.score, s2: gameState.p2.score });
+            } else {
+                conn.send({ y: gameState.p2.y });
+            }
+
+            // Çizim
+            drawGame();
+            requestAnimationFrame(loop);
+        }
+
+        function drawGame() {
+            document.getElementById('s1').innerText = gameState.p1.score;
+            document.getElementById('s2').innerText = gameState.p2.score;
+
+            // P1 - Mavi
+            drawNeonRect(20, gameState.p1.y - paddle.h/2, paddle.w, paddle.h, '#00f3ff');
+            // P2 - Pembe
+            drawNeonRect(canvas.width - 35, gameState.p2.y - paddle.h/2, paddle.w, paddle.h, '#ff00ff');
+            // Top
+            ctx.beginPath();
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = "#fff";
+            ctx.fillStyle = "#fff";
+            ctx.arc(gameState.ball.x, gameState.ball.y, 10, 0, Math.PI*2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+
+        function drawNeonRect(x, y, w, h, color) {
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = color;
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, w, h);
+            ctx.shadowBlur = 0;
+        }
+
+        window.onresize = resize;
+    </script>
+</body>
+</html>
