@@ -3,298 +3,370 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GLOW ARENA MULTIPLAYER</title>
+    <title>İBRAAM'IN OYUNU - GLOW ARENA</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=Press+Start+2P&display=swap');
         
         :root {
             --blue: #00f3ff;
             --pink: #ff00ff;
-            --border: #1a1a2e;
+            --bg: #020205;
         }
 
-        body, html { 
-            margin: 0; padding: 0; width: 100%; height: 100%; 
-            background: #050505; color: white; font-family: 'Orbitron', sans-serif;
-            overflow: hidden; display: flex; align-items: center; justify-content: center;
+        * { box-sizing: border-box; touch-action: none; user-select: none; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--bg); color: white; font-family: 'Orbitron', sans-serif; overflow: hidden; }
+
+        /* ANA MENÜ TASARIMI */
+        #menu-overlay {
+            position: absolute; z-index: 1000; width: 100%; height: 100%;
+            background: radial-gradient(circle at center, #0a0a20 0%, #000 100%);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
 
-        /* Giriş Paneli */
-        #ui-overlay {
-            position: absolute; z-index: 1000;
-            background: rgba(5, 5, 10, 0.95);
-            padding: 40px; border-radius: 30px;
-            border: 2px solid var(--blue);
-            box-shadow: 0 0 50px rgba(0, 243, 255, 0.2);
-            text-align: center; width: 350px;
+        #menu-card {
+            background: rgba(10, 10, 20, 0.9);
+            padding: 50px; border-radius: 40px; border: 3px solid var(--blue);
+            box-shadow: 0 0 60px rgba(0, 243, 255, 0.4); text-align: center; width: 380px;
         }
+
+        h1 { font-family: 'Press Start 2P', cursive; font-size: 18px; line-height: 1.6; color: var(--blue); text-shadow: 0 0 20px var(--blue); margin-bottom: 30px; }
+        .game-subtitle { font-size: 12px; color: var(--pink); letter-spacing: 5px; margin-bottom: 20px; }
 
         input {
-            width: 100%; padding: 15px; background: #111;
-            border: 2px solid #333; color: var(--blue);
-            font-size: 24px; text-align: center; margin: 20px 0;
-            border-radius: 12px; font-family: 'Orbitron'; outline: none;
+            width: 100%; padding: 18px; background: #000; border: 2px solid #333;
+            color: var(--blue); font-size: 22px; text-align: center; margin-bottom: 20px;
+            border-radius: 15px; font-family: 'Orbitron'; outline: none; transition: 0.3s;
         }
+        input:focus { border-color: var(--pink); box-shadow: 0 0 15px var(--pink); }
 
-        .btn-box { display: flex; gap: 15px; }
+        .btn-container { display: flex; gap: 15px; }
         button {
-            flex: 1; padding: 15px; border: none; border-radius: 12px;
+            flex: 1; padding: 18px; border: none; border-radius: 15px;
             font-weight: 900; cursor: pointer; text-transform: uppercase;
-            transition: all 0.3s; font-family: 'Orbitron';
+            transition: 0.3s; font-family: 'Orbitron'; font-size: 14px;
         }
         .host-btn { background: var(--blue); color: #000; }
         .join-btn { background: var(--pink); color: #fff; }
-        button:active { transform: scale(0.95); }
+        button:hover { transform: translateY(-5px); filter: brightness(1.2); }
 
-        /* Oyun Sahası */
-        #arena-container {
-            display: none; position: relative;
-            width: 100vw; height: 100vh;
-            border: 10px solid var(--border);
-            background: radial-gradient(circle, #0a0a1a 0%, #000 100%);
-        }
-
+        /* OYUN SAHASI */
+        #arena-container { display: none; width: 100vw; height: 100vh; position: relative; }
         canvas { display: block; }
 
-        .score-container {
-            position: absolute; width: 100%; height: 100%;
-            display: flex; flex-direction: column; justify-content: space-between;
-            pointer-events: none; padding: 20px 0;
+        #score-board {
+            position: absolute; width: 100%; height: 100%; display: flex;
+            flex-direction: column; justify-content: space-around;
+            pointer-events: none; align-items: center; z-index: 1;
+        }
+        .score-num { font-size: 140px; font-weight: 900; opacity: 0.1; }
+
+        #goal-popup {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 80px; font-weight: 900; color: white; display: none;
+            text-shadow: 0 0 40px #fff; z-index: 2000; font-family: 'Press Start 2P';
         }
 
-        .score-val {
-            font-size: 80px; font-weight: 900; opacity: 0.15;
-            text-align: center; width: 100%;
-        }
-
-        /* Kale Tasarımı */
-        .goal-post {
-            position: absolute; left: 50%; transform: translateX(-50%);
-            width: 160px; height: 15px; border-radius: 10px;
-            box-shadow: 0 0 20px currentColor;
-        }
-        .goal-top { top: 0; background: var(--blue); color: var(--blue); }
-        .goal-bottom { bottom: 0; background: var(--pink); color: var(--pink); }
-
+        #connection-info { position: absolute; bottom: 20px; font-size: 10px; color: #444; width: 100%; text-align: center; }
     </style>
 </head>
 <body>
 
-    <div id="ui-overlay">
-        <h1 style="letter-spacing: 5px; margin:0">GLOW<br>ARENA</h1>
-        <input type="text" id="code-input" placeholder="4 HANELİ" maxlength="4">
-        <div class="btn-box">
-            <button class="host-btn" onclick="connect('host')">ODA AÇ</button>
-            <button class="join-btn" onclick="connect('join')">KATIL</button>
+    <div id="menu-overlay">
+        <div id="menu-card">
+            <div class="game-subtitle">PRO ARENA</div>
+            <h1>İBRAAM'IN<br>OYUNU</h1>
+            <input type="text" id="room-code" placeholder="4 HANELİ ŞİFRE" maxlength="4">
+            <div class="btn-container">
+                <button class="host-btn" onclick="initGame('host')">ODA KUR</button>
+                <button class="join-btn" onclick="initGame('join')">KATIL</button>
+            </div>
+            <p id="status-msg" style="color: #666; margin-top: 20px; font-size: 11px;">Şifreyi gir ve arkadaşını bekle.</p>
         </div>
-        <p id="info-text" style="color: #444; margin-top: 20px; font-size: 12px;">Arkadaşınla aynı kodu gir.</p>
     </div>
 
+    <div id="goal-popup">GOAL!</div>
+
     <div id="arena-container">
-        <div class="goal-post goal-top"></div>
-        <div class="score-container">
-            <div class="score-val" id="s1">0</div>
-            <div class="score-val" id="s2">0</div>
+        <div id="score-board">
+            <div class="score-num" id="s1-display" style="color:var(--blue)">0</div>
+            <div class="score-num" id="s2-display" style="color:var(--pink)">0</div>
         </div>
-        <canvas id="gameCanvas"></canvas>
-        <div class="goal-post goal-bottom"></div>
+        <canvas id="mainCanvas"></canvas>
     </div>
 
     <script>
-        const canvas = document.getElementById('gameCanvas');
+        const canvas = document.getElementById('mainCanvas');
         const ctx = canvas.getContext('2d');
-        const info = document.getElementById('info-text');
-
-        let peer, conn, role;
-        let isDragging = false;
+        const goalPopup = document.getElementById('goal-popup');
         
-        const state = {
-            p1: { x: 0, y: 100, r: 45, score: 0 },
-            p2: { x: 0, y: 0, r: 45, score: 0 },
-            puck: { x: 0, y: 0, vx: 0, vy: 0, r: 25 },
-            arena: { w: 0, h: 0 }
+        let peer, conn, role;
+        let isMoving = false;
+        let goalAnimation = false;
+
+        const config = {
+            paddleR: 45,
+            puckR: 25,
+            goalSize: 200, // Kale genişliği
+            friction: 0.985,
+            maxSpeed: 20
         };
 
-        function connect(type) {
-            const code = document.getElementById('code-input').value;
-            if(code.length < 4) return alert("Şifre 4 hane olmalı!");
-            
+        const state = {
+            p1: { x: 0, y: 0, score: 0 },
+            p2: { x: 0, y: 0, score: 0 },
+            puck: { x: 0, y: 0, vx: 0, vy: 0 },
+            screen: { w: 0, h: 0 }
+        };
+
+        function initGame(type) {
+            const code = document.getElementById('room-code').value;
+            if (code.length < 4) return alert("4 Haneli şifre şart kanka!");
+
             role = type;
-            const peerId = role === 'host' ? `glow-p-${code}-h` : `glow-p-${code}-j`;
-            info.innerText = "Sunucuya bağlanıyor...";
-            
+            const peerId = role === 'host' ? `ibraam-${code}-h` : `ibraam-${code}-j`;
             peer = new Peer(peerId);
 
-            peer.on('open', () => {
+            peer.on('open', (id) => {
                 if(role === 'host') {
-                    info.innerText = "Bağlantı bekleniyor... Oda Kodu: " + code;
+                    document.getElementById('status-msg').innerText = "Oda kuruldu, arkadaşını bekle...";
                 } else {
-                    info.innerText = "Odaya bağlanılıyor...";
-                    conn = peer.connect(`glow-p-${code}-h`);
-                    initConnection();
+                    document.getElementById('status-msg').innerText = "Bağlanılıyor...";
+                    conn = peer.connect(`ibraam-${code}-h`);
+                    handleConnection();
                 }
             });
 
-            peer.on('connection', c => {
+            peer.on('connection', (c) => {
                 conn = c;
-                initConnection();
+                handleConnection();
             });
+
+            peer.on('error', () => alert("Bağlantı hatası! Şifreyi kontrol et veya interneti yenile."));
         }
 
-        function initConnection() {
+        function handleConnection() {
             conn.on('open', () => {
-                document.getElementById('ui-overlay').style.display = 'none';
+                document.getElementById('menu-overlay').style.display = 'none';
                 document.getElementById('arena-container').style.display = 'block';
-                setupArena();
-                requestAnimationFrame(gameLoop);
+                setupLayout();
+                animate();
             });
 
-            conn.on('data', data => {
-                if(role === 'host') {
+            conn.on('data', (data) => {
+                if (role === 'host') {
                     state.p2.x = data.x;
                     state.p2.y = data.y;
                 } else {
                     state.p1 = data.p1;
                     state.puck = data.puck;
-                    state.p2.score = data.s2;
                     state.p1.score = data.s1;
+                    state.p2.score = data.s2;
+                    if(data.goal) showGoal();
                 }
             });
         }
 
-        function setupArena() {
-            state.arena.w = canvas.width = window.innerWidth;
-            state.arena.h = canvas.height = window.innerHeight;
-            state.p1.x = state.arena.w / 2;
-            state.p2.x = state.arena.w / 2;
-            state.p2.y = state.arena.h - 100;
+        function setupLayout() {
+            state.screen.w = canvas.width = window.innerWidth;
+            state.screen.h = canvas.height = window.innerHeight;
+            
+            state.p1.x = state.screen.w / 2;
+            state.p1.y = 120;
+            state.p2.x = state.screen.w / 2;
+            state.p2.y = state.screen.h - 120;
+            
             resetPuck();
         }
 
         function resetPuck() {
-            state.puck.x = state.arena.w / 2;
-            state.puck.y = state.arena.h / 2;
-            state.puck.vx = 0; state.puck.vy = 0;
+            state.puck.x = state.screen.w / 2;
+            state.puck.y = state.screen.h / 2;
+            state.puck.vx = 0;
+            state.puck.vy = 0;
         }
 
-        // Kontrolcü: Mouse veya Touch basılıyken hareket
-        const moveHandler = (e) => {
-            if(!isDragging) return;
-            const ev = e.touches ? e.touches[0] : e;
-            const rect = canvas.getBoundingClientRect();
-            const mouseX = ev.clientX - rect.left;
-            const mouseY = ev.clientY - rect.top;
+        function showGoal() {
+            if(goalAnimation) return;
+            goalAnimation = true;
+            goalPopup.style.display = 'block';
+            setTimeout(() => {
+                goalPopup.style.display = 'none';
+                goalAnimation = false;
+            }, 1500);
+        }
 
-            if(role === 'host') {
-                // Host üst yarıda hapsolur
-                state.p1.x = mouseX;
-                state.p1.y = Math.min(mouseY, state.arena.h / 2 - state.p1.r);
+        // KONTROLLER
+        const inputStart = () => isMoving = true;
+        const inputEnd = () => isMoving = false;
+        const inputMove = (e) => {
+            if(!isMoving) return;
+            const pointer = e.touches ? e.touches[0] : e;
+            const rect = canvas.getBoundingClientRect();
+            const curX = pointer.clientX - rect.left;
+            const curY = pointer.clientY - rect.top;
+
+            if (role === 'host') {
+                state.p1.x = curX;
+                state.p1.y = Math.min(curY, state.screen.h / 2 - config.paddleR);
             } else {
-                // Client alt yarıda hapsolur
-                state.p2.x = mouseX;
-                state.p2.y = Math.max(mouseY, state.arena.h / 2 + state.p2.r);
+                state.p2.x = curX;
+                state.p2.y = Math.max(curY, state.screen.h / 2 + config.paddleR);
             }
         };
 
-        window.onmousedown = window.ontouchstart = () => isDragging = true;
-        window.onmouseup = window.ontouchend = () => isDragging = false;
-        window.onmousemove = window.ontouchmove = moveHandler;
+        window.addEventListener('mousedown', inputStart);
+        window.addEventListener('touchstart', inputStart);
+        window.addEventListener('mouseup', inputEnd);
+        window.addEventListener('touchend', inputEnd);
+        window.addEventListener('mousemove', inputMove);
+        window.addEventListener('touchmove', inputMove);
 
-        function checkCollision(obj1, obj2) {
-            const dx = obj1.x - obj2.x;
-            const dy = obj1.y - obj2.y;
+        // FİZİK MOTORU
+        function updatePhysics() {
+            if (role !== 'host') return;
+
+            state.puck.x += state.puck.vx;
+            state.puck.y += state.puck.vy;
+            state.puck.vx *= config.friction;
+            state.puck.vy *= config.friction;
+
+            // Yan Duvarlar
+            if (state.puck.x < config.puckR || state.puck.x > state.screen.w - config.puckR) {
+                state.puck.vx *= -1;
+                state.puck.x = state.puck.x < config.puckR ? config.puckR : state.screen.w - config.puckR;
+            }
+
+            // Kaleler ve Üst/Alt Duvarlar
+            const inGoalRange = state.puck.x > (state.screen.w / 2 - config.goalSize / 2) && 
+                               state.puck.x < (state.screen.w / 2 + config.goalSize / 2);
+
+            if (state.puck.y < config.puckR) {
+                if (inGoalRange) {
+                    state.p2.score++;
+                    resetPuck();
+                    showGoal();
+                    conn.send({ goal: true });
+                } else {
+                    state.puck.vy *= -1;
+                    state.puck.y = config.puckR;
+                }
+            }
+
+            if (state.puck.y > state.screen.h - config.puckR) {
+                if (inGoalRange) {
+                    state.p1.score++;
+                    resetPuck();
+                    showGoal();
+                    conn.send({ goal: true });
+                } else {
+                    state.puck.vy *= -1;
+                    state.puck.y = state.screen.h - config.puckR;
+                }
+            }
+
+            // Raket Çarpışmaları
+            resolveCollision(state.puck, state.p1);
+            resolveCollision(state.puck, state.p2);
+
+            // Veri Gönder
+            conn.send({ 
+                p1: state.p1, 
+                puck: state.puck, 
+                s1: state.p1.score, 
+                s2: state.p2.score 
+            });
+        }
+
+        function resolveCollision(puck, paddle) {
+            const dx = puck.x - paddle.x;
+            const dy = puck.y - paddle.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
-            
-            if (distance < obj1.r + obj2.r) {
-                // Fiziksel Sekme Hesaplaması
+            const minDistance = config.puckR + config.paddleR;
+
+            if (distance < minDistance) {
                 const angle = Math.atan2(dy, dx);
-                const power = 15; // Vuruş şiddeti
-                state.puck.vx = Math.cos(angle) * power;
-                state.puck.vy = Math.sin(angle) * power;
+                const targetX = paddle.x + Math.cos(angle) * minDistance;
+                const targetY = paddle.y + Math.sin(angle) * minDistance;
                 
-                // Üst üste binmeyi önle
-                const overlap = (obj1.r + obj2.r) - distance;
-                state.puck.x += Math.cos(angle) * overlap;
-                state.puck.y += Math.sin(angle) * overlap;
+                // Vuruş hızı
+                const speed = 18;
+                puck.vx = Math.cos(angle) * speed;
+                puck.vy = Math.sin(angle) * speed;
+                
+                puck.x = targetX;
+                puck.y = targetY;
             }
         }
 
-        function gameLoop() {
-            ctx.clearRect(0, 0, state.arena.w, state.arena.h);
+        // GÖRSEL ÇİZİM
+        function drawArena() {
+            ctx.clearRect(0, 0, state.screen.w, state.screen.h);
 
-            // Saha Çizgileri
-            ctx.strokeStyle = "rgba(255,255,255,0.05)";
-            ctx.lineWidth = 5;
+            // Orta Çizgi ve Daire
+            ctx.strokeStyle = "rgba(255,255,255,0.1)";
+            ctx.lineWidth = 4;
             ctx.beginPath();
-            ctx.moveTo(0, state.arena.h/2); ctx.lineTo(state.arena.w, state.arena.h/2);
+            ctx.moveTo(0, state.screen.h / 2); ctx.lineTo(state.screen.w, state.screen.h / 2);
             ctx.stroke();
             ctx.beginPath();
-            ctx.arc(state.arena.w/2, state.arena.h/2, 60, 0, Math.PI*2);
+            ctx.arc(state.screen.w / 2, state.screen.h / 2, 80, 0, Math.PI * 2);
             ctx.stroke();
 
-            if(role === 'host') {
-                // Fizik Güncelleme
-                state.puck.x += state.puck.vx;
-                state.puck.y += state.puck.vy;
-                state.puck.vx *= 0.985; // Hava sürtünmesi
-                state.puck.vy *= 0.985;
+            // NEON KALELER
+            const gx = state.screen.w / 2 - config.goalSize / 2;
+            
+            // Üst Kale (Mavi)
+            ctx.shadowBlur = 20; ctx.shadowColor = varColor('--blue');
+            ctx.fillStyle = varColor('--blue');
+            ctx.fillRect(gx, 0, config.goalSize, 10);
+            
+            // Alt Kale (Pembe)
+            ctx.shadowBlur = 20; ctx.shadowColor = varColor('--pink');
+            ctx.fillStyle = varColor('--pink');
+            ctx.fillRect(gx, state.screen.h - 10, config.goalSize, 10);
+            ctx.shadowBlur = 0;
 
-                // Duvar Sektirmeleri
-                if(state.puck.x < state.puck.r || state.puck.x > state.arena.w - state.puck.r) {
-                    state.puck.vx *= -1;
-                }
+            // Skorlar
+            document.getElementById('s1-display').innerText = state.p1.score;
+            document.getElementById('s2-display').innerText = state.p2.score;
 
-                // Kale Kontrolü (Genişlik: 160px merkezi)
-                const goalXRange = state.puck.x > state.arena.w/2 - 80 && state.puck.x < state.arena.w/2 + 80;
-
-                if(state.puck.y < 0) {
-                    if(goalXRange) { state.p2.score++; resetPuck(); }
-                    else { state.puck.vy *= -1; state.puck.y = state.puck.r; }
-                }
-                if(state.puck.y > state.arena.h) {
-                    if(goalXRange) { state.p1.score++; resetPuck(); }
-                    else { state.puck.vy *= -1; state.puck.y = state.arena.h - state.puck.r; }
-                }
-
-                checkCollision(state.puck, state.p1);
-                checkCollision(state.puck, state.p2);
-
-                conn.send({ p1: state.p1, puck: state.puck, s1: state.p1.score, s2: state.p2.score });
-            } else {
-                conn.send({ x: state.p2.x, y: state.p2.y });
-            }
-
-            // Arayüz Güncelle
-            document.getElementById('s1').innerText = state.p1.score;
-            document.getElementById('s2').innerText = state.p2.score;
-
-            // Çizimler
-            drawStriker(state.p1.x, state.p1.y, state.p1.r, '#00f3ff');
-            drawStriker(state.p2.x, state.p2.y, state.p2.r, '#ff00ff');
-            drawPuck(state.puck.x, state.puck.y, state.puck.r);
-
-            requestAnimationFrame(gameLoop);
+            // Nesneler
+            drawEntity(state.p1.x, state.p1.y, config.paddleR, varColor('--blue'), true);
+            drawEntity(state.p2.x, state.p2.y, config.paddleR, varColor('--pink'), true);
+            drawEntity(state.puck.x, state.puck.y, config.puckR, "#fff", false);
         }
 
-        function drawStriker(x, y, r, color) {
+        function drawEntity(x, y, r, color, isStriker) {
             ctx.shadowBlur = 25; ctx.shadowColor = color;
             ctx.fillStyle = color;
-            ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
-            ctx.strokeStyle = "white"; ctx.lineWidth = 4; ctx.stroke();
-            // İç halka
-            ctx.beginPath(); ctx.arc(x, y, r*0.6, 0, Math.PI*2); ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
+            
+            if(isStriker) {
+                ctx.strokeStyle = "white";
+                ctx.lineWidth = 5;
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(x, y, r * 0.5, 0, Math.PI * 2);
+                ctx.stroke();
+            }
             ctx.shadowBlur = 0;
         }
 
-        function drawPuck(x, y, r) {
-            ctx.shadowBlur = 15; ctx.shadowColor = "white";
-            ctx.fillStyle = "#fff";
-            ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
-            ctx.shadowBlur = 0;
+        function varColor(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+        function animate() {
+            updatePhysics();
+            if (role !== 'host') {
+                conn.send({ x: state.p2.x, y: state.p2.y });
+            }
+            drawArena();
+            requestAnimationFrame(animate);
         }
 
-        window.onresize = setupArena;
+        window.addEventListener('resize', setupLayout);
     </script>
 </body>
 </html>
